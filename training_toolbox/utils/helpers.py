@@ -135,7 +135,7 @@ def dump_frozen_graph(sess, graph_file, output_node_names=None):
   print('Done')
 
   print('>> Saving `{}`... '.format(ckpt), end='')
-  tf.train.Saver().save(sess, ckpt, write_meta_graph=False)
+  tf.train.Saver().save(sess, ckpt, write_meta_graph=True)
   print('Done')
 
   print('>> Freezing graph to `{}`... '.format(frozen))

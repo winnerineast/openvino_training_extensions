@@ -7,13 +7,13 @@ root_dir = os.path.normpath(os.path.join(current_dir, "../../.."))
 
 # See more details about parameters in TensorFlow documentation tf.estimator
 class train:
-  annotation_path = "instances_train2017.json"  # Path to the annotation file
-  cache_type = "ENCODED"  # Type of data to save in memory, possible options: 'FULL', 'ENCODED', 'NONE'
+  annotation_path = os.path.join(root_dir, "./data/coco/annotations/instances_train2017_converted.json")  # Path to the annotation file
+  cache_type = "NONE"  # Type of data to save in memory, possible options: 'FULL', 'ENCODED', 'NONE'
 
   batch_size = 32                    # Number of images in the batch
   steps = 50000000                   # Number of steps for which to train model
   max_steps = None                   # Number of total steps for which to train model
-  save_checkpoints_steps = 1000      # Number of training steps when checkpoint should be saved
+  save_checkpoints_steps = 4000      # Number of training steps when checkpoint should be saved
   keep_checkpoint_every_n_hours = 6  # Checkpoint should be saved forever after every n hours
   save_summary_steps = 100           # Number of steps when the summary information should be saved
   random_seed = 666                  # Random seed
@@ -27,17 +27,17 @@ class train:
 
     intra_op_parallelism_threads = 2
     inter_op_parallelism_threads = 8
-    transformer_parallel_calls = 4  # Number of parallel threads in data transformer/augmentation
-    transformer_prefetch_size = 8   # Number of batches to prefetch
+    transformer_parallel_calls = 6  # Number of parallel threads in data transformer/augmentation
+    transformer_prefetch_size = 18   # Number of batches to prefetch
 
 
 class eval:
   annotation_path = {
-    "test": os.path.join(current_dir, "instances_val2017.json")
+    "val": os.path.join(root_dir, "./data/coco/annotations/instances_val2017_converted.json")  # Path to the annotation file
   }  # Dictionary with paths to annotations and its short names which will be displayed in the TensorBoard
-  datasets = ["test"]  # List of names from annotation_path dictionary on which evaluation will be launched
+  datasets = ["val"]  # List of names from annotation_path dictionary on which evaluation will be launched
   vis_num = 12                  # Select random images for visualization in the TensorBoard
-  save_images_step = 2          # Save images every 2-th evaluation
+  save_images_step = 1          # Save images every 2-th evaluation
   batch_size = 8                # Number of images in the batch
 
   class execution:
@@ -69,19 +69,40 @@ class infer:
 input_shape = (256, 256, 3)  # Input shape of the model (width, height, channels)
 classes = ObjectDetectorJson.get_classes_from_coco_annotation(os.path.join(current_dir, train.annotation_path))
 model_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         'model')  # Path to the folder where all training and evaluation artifacts will be located
+                         'model_head_loss')  # Path to the folder where all training and evaluation artifacts will be located
 if not os.path.exists(model_dir):
   os.makedirs(model_dir)
 
 
 def learning_rate_schedule():  # Function which controls learning rate during training
   import tensorflow as tf
-  return tf.train.exponential_decay(
-    learning_rate=0.004,
+  lr_decay1 = tf.train.exponential_decay(
+    learning_rate=0.2,
     global_step=tf.train.get_or_create_global_step(),
-    decay_steps=800000,
-    decay_rate=0.95,
+    decay_steps=10000,
+    decay_rate=0.965936328924846,
     staircase=True)
+
+  lr_decay2 = tf.train.exponential_decay(
+    learning_rate=0.114869835499704,
+    global_step=tf.train.get_or_create_global_step(),
+    decay_steps=20000,
+    decay_rate=0.965936328924846,
+    staircase=True)
+
+  lr = tf.case([(tf.less(tf.train.get_or_create_global_step(), 200000), lambda: tf.constant(0.1)),
+                (tf.less(tf.train.get_or_create_global_step(), 488000), lambda: lr_decay1),
+                (tf.less(tf.train.get_or_create_global_step(), 640000), lambda: tf.constant(0.037892914162761)),
+                (tf.less(tf.train.get_or_create_global_step(), 60000000), lambda: lr_decay2)])
+  return lr
+  '''
+  return tf.train.exponential_decay(
+    learning_rate=0.2,
+    global_step=tf.train.get_or_create_global_step(),
+    decay_steps=10000,
+    decay_rate=0.965936328924846,
+    staircase=True)
+  '''
 
 
 def optimizer(learning_rate):

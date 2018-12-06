@@ -368,12 +368,12 @@ def create_default_samplers():
 
   for overlap in [0.1, 0.3, 0.5, 0.7, 0.9]:
     sampler = BatchSampler(min_scale=0.3, max_scale=1.0, min_aspect_ratio=0.5, max_aspect_ratio=2.0, max_sample=1,
-                           max_trials=50)
+                           max_trials=10)
     sampler.min_jaccard_overlap = overlap
     samplers.append(sampler)
 
   sampler = BatchSampler(min_scale=0.3, max_scale=1.0, min_aspect_ratio=0.5, max_aspect_ratio=2.0, max_sample=1,
-                         max_trials=50)
+                         max_trials=10)
   sampler.max_jaccard_overlap = 1.0
   samplers.append(sampler)
   return samplers

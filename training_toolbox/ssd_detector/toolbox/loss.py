@@ -61,7 +61,7 @@ class MultiboxLoss:
       tf.summary.scalar(log_name, log_value)
       self.eval_tensors[log_name] = log_value
 
-  def eval_summary(self, ground_truth, prediction):
+  def eval_summary(self, ground_truth, prediction, priors_info):
     """
       Compute evaluation metrics (for EVAL mode).
 
@@ -86,13 +86,37 @@ class MultiboxLoss:
       'total_classification_loss':  tf.reduce_mean(classification_loss),
       'total_localization_loss': tf.reduce_mean(loc_loss),
     }
+    '''
+
+    import numpy as np
+    total_priors_number = int(ground_truth.shape[1])
+
+    classification_loss = tf.reshape(classification_loss, [-1, total_priors_number])
+
+    start = 0
+    for pid, info in enumerate(priors_info):
+      priors_count = info[1]
+      steps_count = info[0][0] * info[0][1]
+
+      for j in range(priors_count):
+        prior_map = np.zeros(shape=[total_priors_number], dtype=np.bool)
+        for i in range(steps_count):
+          prior_map[start + j + i * priors_count] = True
+
+
+        assigned_priors_head = tf.boolean_mask(classification_loss, prior_map)
+        evaluation_tensors['classification_loss_{}_{}'.format(pid, j)] = tf.reduce_mean(
+          tf.reduce_sum(assigned_priors_head, axis=-1))
+
+      start += steps_count * priors_count
+    '''
 
     self.__add_evaluation(evaluation_tensors)
 
     total_loss = tf.reduce_mean(classification_loss + self.loc_weight * loc_loss) / tf.maximum(1.0, num_positives)
     return total_loss
 
-  def loss(self, ground_truth, prediction, bboxes):
+  def loss(self, ground_truth, prediction, bboxes, priors_info):
     """
       Compute multibox loss.
 
@@ -123,6 +147,7 @@ class MultiboxLoss:
       neg_class_loss_all = classification_loss * negatives  # shape: (batch_size, num_priors)
       n_neg_losses = tf.count_nonzero(neg_class_loss_all, dtype=tf.float32)  # shape: (1,)
 
+      '''
       def no_negatives():
         return tf.zeros([batch_size], dtype=tf.float32), tf.constant(0, dtype=tf.int32)
 
@@ -148,7 +173,7 @@ class MultiboxLoss:
           expanded_indexes = tf.expand_dims(indices, axis=1)  # shape: (num_negatives, 1)
           negatives_keep = tf.scatter_nd(expanded_indexes, updates=tf.ones_like(indices, dtype=tf.int32),
                                          shape=tf.shape(classification_loss_per_image))  # shape: (num_priors,)
-          negatives_keep = tf.to_float(tf.reshape(negatives_keep, [num_priors]))  # shape: (batch_size, num_priors)
+          negatives_keep = tf.to_float(tf.reshape(negatives_keep, [num_priors]))  # shape: (num_priors,)
           neg_class_losses.append(tf.reduce_sum(classification_loss_per_image * negatives_keep, axis=-1))  # shape: (1,)
 
         return tf.stack(neg_class_losses), tf.reduce_sum(tf.stack(total_negatives))
@@ -159,7 +184,110 @@ class MultiboxLoss:
       loc_loss = tf.reduce_sum(localization_loss * positives, axis=-1)  # shape: (batch_size,)
 
       total_loss = tf.reduce_sum(class_loss + self.loc_weight * loc_loss) / tf.maximum(1.0, num_positives)
+      '''
 
+      # ''' Loss by head
+
+      import numpy as np
+      total_priors_number = int(ground_truth.shape[1])
+
+      prior_maps = []
+      start = 0
+      for pid, info in enumerate(priors_info):
+        priors_count = info[1]
+        steps_count = info[0][0] * info[0][1]
+
+        for j in range(priors_count):
+          prior_map = np.zeros(shape=[total_priors_number], dtype=np.float32)
+          for i in range(steps_count):
+            prior_map[start + j + i * priors_count] = 1.0
+
+          prior_maps.append([tf.constant(prior_map), steps_count, tf.constant(prior_map, dtype=tf.int32)])
+        start += steps_count * priors_count
+
+      def no_negatives():
+        return tf.zeros([batch_size], dtype=tf.float32), tf.constant(0, dtype=tf.int32)
+
+      def hard_negative_mining():
+        bboxes_per_batch = tf.unstack(bboxes)
+        classification_loss_per_batch = tf.unstack(classification_loss)
+        num_positives_per_batch = tf.unstack(tf.reduce_sum(positives, axis=-1))
+        neg_class_loss_per_batch = tf.unstack(neg_class_loss_all)
+
+        neg_class_losses = []
+        total_negatives = []
+
+        for bboxes_per_image, classification_loss_per_image, num_positives_per_image, neg_class_loss_per_image in \
+            zip(bboxes_per_batch, classification_loss_per_batch, num_positives_per_batch, neg_class_loss_per_batch):
+          min_negatives_keep = tf.maximum(self.neg_pos_ratio * num_positives_per_image, 3)
+          num_negatives_keep = tf.minimum(min_negatives_keep,
+                                          tf.count_nonzero(neg_class_loss_per_image, dtype=tf.float32))
+
+          indices = tf.image.non_max_suppression(bboxes_per_image, classification_loss_per_image,
+                                                 tf.to_int32(num_negatives_keep), iou_threshold=0.99)
+          num_negatives = tf.size(indices)
+
+          expanded_indexes = tf.expand_dims(indices, axis=1)  # shape: (num_negatives, 1)
+          negatives_keep = tf.scatter_nd(expanded_indexes, updates=tf.ones_like(indices, dtype=tf.int32),
+                                         shape=tf.shape(classification_loss_per_image))  # shape: (num_priors,)
+
+          negatives_keep = tf.reshape(negatives_keep, [num_priors])  # shape: (num_priors,)
+
+          for prior_map, steps_count, prior_map_int in prior_maps:
+            if steps_count == 1:
+              negatives_keep = tf.maximum(negatives_keep, prior_map_int)
+            else:
+              classification_loss_per_image_tmp = classification_loss_per_image * prior_map
+
+              indices = tf.image.non_max_suppression(bboxes_per_image, classification_loss_per_image_tmp,
+                                                     1, iou_threshold=0.99)
+              expanded_indexes = tf.expand_dims(indices, axis=1)  # shape: (num_negatives, 1)
+              negatives_keep_tmp = tf.scatter_nd(expanded_indexes, updates=tf.ones_like(indices, dtype=tf.int32),
+                                             shape=tf.shape(classification_loss_per_image))
+              negatives_keep = tf.maximum(negatives_keep, negatives_keep_tmp)
+
+          total_negatives.append(tf.reduce_sum(negatives_keep))
+          negatives_keep = tf.to_float(negatives_keep)
+          neg_class_losses.append(tf.reduce_sum(classification_loss_per_image * negatives_keep, axis=-1))  # shape: (1,)
+
+        return tf.stack(neg_class_losses), tf.reduce_sum(tf.stack(total_negatives))
+
+      neg_class_loss, total_negatives = tf.cond(tf.equal(n_neg_losses, tf.constant(0.)),
+                                                no_negatives, hard_negative_mining)  # shape: (batch_size,)
+      class_loss = pos_class_loss + neg_class_loss  # shape: (batch_size,)
+      loc_loss = tf.reduce_sum(localization_loss * positives, axis=-1)  # shape: (batch_size,)
+
+      total_loss = tf.reduce_sum(class_loss + self.loc_weight * loc_loss) / tf.maximum(1.0, num_positives)
+      # '''
+
+      ''' New version of loss
+      import numpy as np
+      total_priors_number = int(bboxes.shape[1])
+      total_batch = int(bboxes.shape[0])
+      start = 0
+      head_losses = []
+      for pid, info in enumerate(priors_info):
+        priors_count = info[1]
+        steps_count = info[0][0] * info[0][1]
+
+        prior_map = np.zeros(shape=[total_batch, total_priors_number], dtype=np.bool)
+        prior_map[:, start:(start + priors_count * steps_count)] = True
+
+        assigned_priors_head = tf.boolean_mask(classification_loss, prior_map)
+        assigned_priors_head = tf.reshape(assigned_priors_head, [total_batch, priors_count * steps_count])
+        head_losses.append(tf.reduce_mean(assigned_priors_head, axis=-1))
+
+        start += steps_count * priors_count
+
+      class_loss = tf.add_n(head_losses)
+
+      loc_loss = tf.reduce_sum(localization_loss * positives, axis=-1)  # shape: (batch_size,)
+
+      total_loss = tf.reduce_sum(class_loss + (self.loc_weight * loc_loss) / tf.maximum(1.0, num_positives) )
+
+      total_negatives = total_priors_number * total_batch - num_positives
+
+      '''
       update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
       if update_ops:
         updates = tf.group(*update_ops)
@@ -174,6 +302,30 @@ class MultiboxLoss:
         'num_positives_per_batch': num_positives,
         'num_negatives_per_batch': total_negatives
       }
+
+      import numpy as np
+      total_priors_number = int(bboxes.shape[1])
+      total_batch = int(bboxes.shape[0])
+      start = 0
+      for pid, info in enumerate(priors_info):
+        priors_count = info[1]
+        steps_count = info[0][0] * info[0][1]
+
+        for j in range(priors_count):
+          prior_map = np.zeros(shape=[total_batch, total_priors_number], dtype=np.bool)
+          for i in range(steps_count):
+            prior_map[:, start + j + i * priors_count] = True
+
+          assigned_priors_head = tf.boolean_mask(classification_loss, prior_map)
+          assigned_priors_head = tf.reshape(assigned_priors_head, [total_batch, steps_count])
+          # evaluation_tensors['classification_loss_{}_{}'.format(pid, j)] = tf.reduce_mean(tf.reduce_sum(assigned_priors_head, axis=-1))
+          evaluation_tensors['classification_loss_{}_{}'.format(pid, j)] = tf.reduce_mean(
+            tf.reduce_mean(assigned_priors_head, axis=-1))
+
+        start += steps_count * priors_count
+
+
+
 
       self.__add_evaluation(evaluation_tensors)
 

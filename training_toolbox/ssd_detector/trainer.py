@@ -232,7 +232,7 @@ def detection_model(features, labels, mode, params):
     eval_iteration = tf.assign(eval_iteration, eval_iteration + 1)
     targets = with_dependencies([eval_iteration], targets)
 
-    loss = loss_func.eval_summary(targets, ssd.predictions)
+    loss = loss_func.eval_summary(targets, ssd.predictions, ssd.priors_info)
     loss = tf.cond(every_eval_print_steps,
                    lambda: tf.Print(loss, [tf.round(100 * eval_iteration / steps_per_epoch), loss], '[%][loss]: '),
                    lambda: loss)
@@ -262,7 +262,7 @@ def detection_model(features, labels, mode, params):
     ssd.load_weights(initial_weights_path)
 
   bboxes = ssd._decode_boxes(ssd.predictions['locs'], priors=ssd.priors[0, 0], variance=ssd.priors[0, 1])
-  loss = loss_func.loss(targets, ssd.predictions, bboxes)  # 4. Compute loss with NMS
+  loss = loss_func.loss(targets, ssd.predictions, bboxes, ssd.priors_info)  # 4. Compute loss with NMS
 
   if collect_priors_summary:
     with tf.name_scope('summary/'):
@@ -288,6 +288,7 @@ def detection_model(features, labels, mode, params):
       loss = with_dependencies(py_func_ops, loss)
 
   optimizer = optimizer_func(learning_rate)
+  # optimizer = tf.contrib.estimator.TowerOptimizer(optimizer_func(learning_rate))
   tf.summary.scalar('learning_rate', learning_rate)
 
   regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)

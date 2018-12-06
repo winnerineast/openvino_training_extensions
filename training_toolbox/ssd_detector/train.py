@@ -42,7 +42,7 @@ def train(config):
   config.detector_params['log_dir'] = config.model_dir
 
   predictor = tf.estimator.Estimator(
-    model_fn=detection_model,
+    model_fn=detection_model, #tf.contrib.estimator.replicate_model_fn(detection_model), #detection_model,
     params=config.detector_params,
     model_dir=config.model_dir,
     config=run_config
