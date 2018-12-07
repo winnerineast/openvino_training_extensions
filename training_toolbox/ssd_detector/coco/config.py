@@ -84,7 +84,7 @@ def learning_rate_schedule():  # Function which controls learning rate during tr
     staircase=True)
 
   lr_decay2 = tf.train.exponential_decay(
-    learning_rate=0.114869835499704,
+    learning_rate=0.096593632892486,
     global_step=tf.train.get_or_create_global_step(),
     decay_steps=20000,
     decay_rate=0.965936328924846,
@@ -92,7 +92,7 @@ def learning_rate_schedule():  # Function which controls learning rate during tr
 
   lr = tf.case([(tf.less(tf.train.get_or_create_global_step(), 200000), lambda: tf.constant(0.1)),
                 (tf.less(tf.train.get_or_create_global_step(), 488000), lambda: lr_decay1),
-                (tf.less(tf.train.get_or_create_global_step(), 640000), lambda: tf.constant(0.037892914162761)),
+                (tf.less(tf.train.get_or_create_global_step(), 540000), lambda: tf.constant(0.037892914162761)),
                 (tf.less(tf.train.get_or_create_global_step(), 60000000), lambda: lr_decay2)])
   return lr
   '''
