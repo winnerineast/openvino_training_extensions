@@ -17,7 +17,6 @@
 from __future__ import print_function
 import argparse
 import os
-import subprocess
 
 import tensorflow as tf
 from tfutils.helpers import dump_frozen_graph, load_module, execute_mo
@@ -108,6 +107,7 @@ def main(_):
     'scale': scale,
     'mean_value': mean_value,
     'tensorflow_use_custom_operations_config': ssd_config_path,
+    'data_type':args.data_type,
   }
   execute_mo(mo_params, frozen_graph, export_dir)
 

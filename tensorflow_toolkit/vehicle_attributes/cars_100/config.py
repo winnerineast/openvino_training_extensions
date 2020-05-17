@@ -29,7 +29,7 @@ class train:
   prefetch_size = 4
 
   annotation_path = '../../data/cars_100/cars_100_train.json'
-  use_pretrained_weights = False
+  use_pretrained_weights = True
   pretrained_ckpt = 'vehicle-attributes-barrier-0103/model.ckpt-2000000'
 
   class execution:

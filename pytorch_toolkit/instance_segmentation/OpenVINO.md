@@ -1,9 +1,8 @@
-## Training instance segmentation models from Open Model Zoo
+# Train Instance-Segmentation Models from Open Model Zoo
 
+## instance-segmentation-security-0010
 
-### instance-segmentation-security-0010
-
-[Description](https://github.com/opencv/open_model_zoo/tree/develop/intel_models/instance-segmentation-security-0010/description/instance-segmentation-security-0010.md)
+[Description](https://github.com/opencv/open_model_zoo/blob/develop/models/intel/instance-segmentation-security-0010/description/instance-segmentation-security-0010.md)
 
 ```bash
 $ python3 tools/train.py \
@@ -17,11 +16,11 @@ $ python3 tools/train.py \
     --model segmentoly.rcnn.model_zoo.resnet_panet_mask_rcnn.ResNeXt101PANetMaskRCNN \
     --load_backbone data/pretrained_models/converted/imagenet/detectron/resnext101.pth
 ```
-> **Note:** Trained on 4 P100
+> **NOTE**: This model is trained on 4 P100.
 
-### instance-segmentation-security-0083
+## instance-segmentation-security-0083
 
-[Description](https://github.com/opencv/open_model_zoo/tree/develop/intel_models/instance-segmentation-security-0083/description/instance-segmentation-security-0083.md)
+[Description](https://github.com/opencv/open_model_zoo/blob/develop/models/intel/instance-segmentation-security-0083/description/instance-segmentation-security-0083.md)
 
 ```bash
 $ python3 tools/train.py \
@@ -35,12 +34,20 @@ $ python3 tools/train.py \
     --model segmentoly.rcnn.model_zoo.resnet_fpn_mask_rcnn.ResNeXt152FPNMaskRCNN \
     --load_backbone data/pretrained_models/converted/imagenet/detectron/resnext152.pth
 ```
-> **Note:** Trained on 2 P100
+> **NOTE**: This model is trained on 2 P100.
 
-### instance-segmentation-security-0050
+## instance-segmentation-security-0050
 
-[Description](https://github.com/opencv/open_model_zoo/tree/develop/intel_models/instance-segmentation-security-0050/description/instance-segmentation-security-0050.md)
+[Description](https://github.com/opencv/open_model_zoo/blob/develop/models/intel/instance-segmentation-security-0050/description/instance-segmentation-security-0050.md)
+
+To train from ImageNet weights, run the command below:
 
 ```bash
 $ python3 tools/train_0050.py
 ```
+
+Find the fine-tuning sample in `tools/finetune_0050.py`.
+
+> **NOTE**: Download checkpoints via `tools/download_pretrained_weights.py` first.
+> Before running, make necessary changes to learning rate, batch size, number of training steps or
+> other training parameters there.

@@ -1,22 +1,26 @@
-## Information
+# Object detection
 
+## Pre-trained models
 
-### Face Detection
-This repository contains training scripts for lightweight SSD-based face detector. The detector is based on the MobileNetV2 backbone and has single SSD head with manually designed anchors. As a result it has computational complexity 0.51 GMACs and 1.03 M of parameters.
+This repo contains scripts and tutorials for object detection models training.
 
-### Person Vehicle Bike Detection
-The detection network model provides detection of 3 class objects: vehicle, pedestrian, non-vehicle (ex: bikes).
-This detector was trained on the data from crossroad cameras.
+### [Face Detection](face_detection.md)
 
+Models that are able to detect faces on given images.
+
+### [Person Vehicle Bike Detection](person_vehicle_bike_detection.md)
+
+Models that are able to detect 3 classes of objects: person, vehicle, non-vehicle (e.g. bike).
 
 ## Setup
 
 ### Prerequisites
 
-* Ubuntu 16.04
-* Python 3.6
-* PyTorch 1.0.1
-* OpenVINO 2019 R1 with Python API
+* Ubuntu\* 16.04
+* Python\* >=3.6
+* PyTorch\* 1.4.0
+* OpenVINO™ 2020.2 with Python API
+* mmdetection (../../external/mmdetection)
 
 ### Installation
 
@@ -29,8 +33,3 @@ bash init_venv.sh
 ```bash
 . venv/bin/activate
 ```
-
-## Training and evaluation
-
-* [Face Detection](./face_detection.md)
-* [Person Vehicle Bike Detection](./person_vehicle_bike_detection.md)

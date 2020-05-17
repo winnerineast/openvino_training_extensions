@@ -81,13 +81,15 @@ def sample_clips(videos, num_samples_per_video, sample_duration):
 
         else:
 
-            if num_samples_per_video == 0:
-                # use all sequential clips with sample_duration
-                step = sample_duration
+            num_samples = num_samples_per_video
+            if num_samples_per_video <= 0:
+                # Use all clips of sample_duration or the whole video if it's short enough.
+                step = 1
+                num_samples = max(1, n_frames - sample_duration + 1)
             else:
                 step = max(1, (n_frames - sample_duration) // (num_samples_per_video - 1))
 
-            for clip_start in range(segment_start, segment_start + step * num_samples_per_video, step):
+            for clip_start in range(segment_start, segment_start + step * num_samples, step):
                 sampled_clip = copy.deepcopy(sample)
                 clip_end = min(segment_end + 1, clip_start + sample_duration)
                 sampled_clip['frame_indices'] = list(range(clip_start, clip_end))
@@ -104,7 +106,6 @@ class VideoDataset(data.Dataset):
         video_path (Path): Directory with video files. Will be used by annotation_loader to resolve real paths.
         annotation_path (Path): Path to annotation file.
         subset (str): Which subset of dataset to use (validation/training/testing)
-        annotation_format (str): Format of the annotation file.
         n_samples_for_each_video (int): How many clips should be sampled from every video per epoch.
         spatial_transform (callable): A function/transform that takes in a clip (list of frames) and returns
             transformed version

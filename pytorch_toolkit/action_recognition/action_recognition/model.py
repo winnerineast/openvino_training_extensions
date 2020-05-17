@@ -110,6 +110,20 @@ MODEL_REGISTRY = {
         args.sample_size,
         False if args.pretrain_path or args.resume_path else True
     ),
+    'baseline_encoder': lambda args, encoder: multi_frame_baseline.MultiFrameBaselineEncoder(
+        args.sample_duration,
+        encoder,
+        args.n_classes,
+        args.sample_size,
+        False if args.pretrain_path or args.resume_path else True
+    ),
+    'baseline_decoder': lambda args, encoder: multi_frame_baseline.MultiFrameBaselineDecoder(
+        args.sample_duration,
+        encoder,
+        args.n_classes,
+        args.sample_size,
+        False if args.pretrain_path or args.resume_path else True
+    ),
 
     'resnet34_attn_single': lambda args, encoder: lstm_attention.ResnetAttSingleInput(
         args.hidden_size,
@@ -186,7 +200,7 @@ def create_model(args, model, pretrain_path=None):
     else:
         model = MODEL_REGISTRY[model_type](args, encoder_name)
 
-    # load pre-trained model
+    # load pretrained model
     if pretrain_path:
         print('loading pretrained model {}'.format(args.pretrain_path))
         pretrain = torch.load(str(args.pretrain_path))

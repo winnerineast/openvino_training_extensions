@@ -13,9 +13,10 @@ virtualenv venv -p python3 --prompt="(pytorch-toolbox) "
 echo "export PYTHONPATH=\$PYTHONPATH:${work_dir}" >> venv/bin/activate
 . venv/bin/activate
 pip install -r ${work_dir}/requirements.txt
+pip install -e ../nncf
 
 # Install OpenVino Model Optimizer (optional)
-mo_requirements_file="${INTEL_CVSDK_DIR}/deployment_tools/model_optimizer/requirements_tf.txt"
+mo_requirements_file="${INTEL_OPENVINO_DIR:-/opt/indel/openvino}/deployment_tools/model_optimizer/requirements_onnx.txt"
 if [[ -e "${mo_requirements_file}" ]]; then
   pip install -qr ${mo_requirements_file}
 else
